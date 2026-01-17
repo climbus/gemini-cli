@@ -3,13 +3,14 @@ local stub = require("luassert.stub")
 
 describe("gemini.buffers", function()
   local buffers = require("gemini.buffers")
+  local rpcnotify_stub
 
   before_each(function()
-    stub(vim, "rpcnotify")
+    rpcnotify_stub = stub(vim, "rpcnotify")
   end)
 
   after_each(function()
-    vim.rpcnotify:revert()
+    rpcnotify_stub:revert()
   end)
 
   it("notifies on buffer enter", function()
@@ -22,7 +23,7 @@ describe("gemini.buffers", function()
 
     vim.cmd("doautocmd BufEnter")
 
-    assert.stub(vim.rpcnotify).was_called_with(0, "gemini:buffer_enter", {
+    assert.stub(rpcnotify_stub).was_called_with(0, "gemini:buffer_enter", {
       path = filename,
       bufnr = buf,
     })
@@ -44,7 +45,7 @@ describe("gemini.buffers", function()
      
      vim.cmd("doautocmd CursorMoved")
 
-     assert.stub(vim.rpcnotify).was_called_with(0, "gemini:cursor_moved", {
+     assert.stub(rpcnotify_stub).was_called_with(0, "gemini:cursor_moved", {
        line = 2,
        col = 1,
      })
@@ -61,7 +62,7 @@ describe("gemini.buffers", function()
 
      vim.cmd("doautocmd BufDelete")
 
-     assert.stub(vim.rpcnotify).was_called_with(0, "gemini:buffer_closed", {
+     assert.stub(rpcnotify_stub).was_called_with(0, "gemini:buffer_closed", {
        path = filename,
      })
   end)

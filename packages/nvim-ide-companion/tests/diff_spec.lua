@@ -3,21 +3,26 @@ local stub = require("luassert.stub")
 
 describe("gemini.diff", function()
   local diff = require("gemini.diff")
+  local rpcnotify_stub
   diff.setup()
 
   before_each(function()
-    stub(vim, "rpcnotify")
+    rpcnotify_stub = stub(vim, "rpcnotify")
   end)
 
   after_each(function()
-    vim.rpcnotify:revert()
+    rpcnotify_stub:revert()
     vim.cmd("tabonly!") -- Close all other windows
   end)
 
   it("opens diff view", function()
     local filename = "/tmp/test_diff.txt"
     -- Create dummy file
-    local f = io.open(filename, "w")
+    local f, err = io.open(filename, "w")
+    if not f then
+      assert.fail("Failed to open file: " .. (err or filename))
+      return
+    end
     f:write("original content")
     f:close()
 
@@ -43,35 +48,43 @@ describe("gemini.diff", function()
   end)
 
   it("accepts diff", function()
-     local filename = "/tmp/test_diff_accept.txt"
-     local f = io.open(filename, "w")
-     f:write("original")
-     f:close()
+    local filename = "/tmp/test_diff_accept.txt"
+    local f, err = io.open(filename, "w")
+    if not f then
+      assert.fail("Failed to open file: " .. (err or filename))
+      return
+    end
+    f:write("original")
+    f:close()
 
-     _G.GeminiShowDiff(filename, "new")
-     
-     -- Simulate accept
-     diff.accept_diff(filename)
+    _G.GeminiShowDiff(filename, "new")
 
-     assert.stub(vim.rpcnotify).was_called_with(0, "gemini:diff_accepted", {
-       filePath = filename,
-       content = "new"
-     })
+    -- Simulate accept
+    diff.accept_diff(filename)
+
+    assert.stub(rpcnotify_stub).was_called_with(0, "gemini:diff_accepted", {
+      filePath = filename,
+      content = "new",
+    })
   end)
 
   it("rejects diff", function()
-     local filename = "/tmp/test_diff_reject.txt"
-     local f = io.open(filename, "w")
-     f:write("original")
-     f:close()
+    local filename = "/tmp/test_diff_reject.txt"
+    local f, err = io.open(filename, "w")
+    if not f then
+      assert.fail("Failed to open file: " .. (err or filename))
+      return
+    end
+    f:write("original")
+    f:close()
 
-     _G.GeminiShowDiff(filename, "new")
-     
-     -- Simulate reject
-     diff.reject_diff(filename)
+    _G.GeminiShowDiff(filename, "new")
 
-     assert.stub(vim.rpcnotify).was_called_with(0, "gemini:diff_rejected", {
-       filePath = filename,
-     })
+    -- Simulate reject
+    diff.reject_diff(filename)
+
+    assert.stub(rpcnotify_stub).was_called_with(0, "gemini:diff_rejected", {
+      filePath = filename,
+    })
   end)
 end)

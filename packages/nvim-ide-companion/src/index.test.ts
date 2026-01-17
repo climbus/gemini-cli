@@ -17,10 +17,10 @@ vi.mock('neovim', () => ({
 }));
 
 vi.mock('./ide-server.js', () => ({
-  IDEServer: vi.fn().mockImplementation(() => ({
-    start: vi.fn(),
-    stop: vi.fn(),
-  })),
+  IDEServer: vi.fn(() => ({
+      start: vi.fn(),
+      stop: vi.fn(),
+    })),
 }));
 
 vi.mock('./context-manager.js', () => ({

@@ -12,7 +12,8 @@ describe("gemini.diff", function()
 
   after_each(function()
     rpcnotify_stub:revert()
-    vim.cmd("tabonly!") -- Close all other windows
+    vim.cmd("tabonly!")
+    vim.cmd("only!")
   end)
 
   it("opens diff view", function()
@@ -86,5 +87,46 @@ describe("gemini.diff", function()
     assert.stub(rpcnotify_stub).was_called_with(0, "gemini:diff_rejected", {
       filePath = filename,
     })
+  end)
+
+  it("replaces current buffer with original file when showing diff", function()
+    local file1 = "/tmp/file1.txt"
+    local file2 = "/tmp/file2.txt"
+
+    -- Create files
+    local f1 = io.open(file1, "w")
+    if f1 then
+      f1:write("content of file 1")
+      f1:close()
+    end
+
+    local f2 = io.open(file2, "w")
+    if f2 then
+      f2:write("content of file 2")
+      f2:close()
+    end
+
+    -- 1. Open file1
+    vim.cmd("edit " .. file1)
+
+    -- 2. Call GeminiShowDiff for file2
+    _G.GeminiShowDiff(file2, "new content for file 2")
+
+    -- 3. Check what's in the windows
+    local wins = vim.api.nvim_tabpage_list_wins(0)
+
+    local left_win = wins[1]
+    local left_buf = vim.api.nvim_win_get_buf(left_win)
+    local left_name = vim.api.nvim_buf_get_name(left_buf)
+
+    -- Verify file1 is NOT in the diff view and file2 is in the left window
+    assert.is_nil(
+      string.match(left_name, "file1.txt"),
+      "File 1 should NOT be in the diff view"
+    )
+    assert.is_not_nil(
+      string.match(left_name, "file2.txt"),
+      "File 2 should be in the left window"
+    )
   end)
 end)

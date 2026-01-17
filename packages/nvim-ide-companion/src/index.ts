@@ -13,7 +13,7 @@ import { ContextManager } from './context-manager.js';
 import { NvimDiffManager } from './diff-manager.js';
 import { createLogger } from './utils/logger.js';
 
-async function main() {
+export async function main() {
   // Connect to Neovim via socket (passed by Lua plugin)
   const socketPath = process.env.NVIM_SOCKET;
   if (!socketPath) {
@@ -97,8 +97,10 @@ async function main() {
   });
 }
 
-main().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error('Fatal error:', err);
-  process.exit(1);
-});
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error('Fatal error:', err);
+    process.exit(1);
+  });
+}

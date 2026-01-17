@@ -2,7 +2,6 @@
 
 local M = {}
 
--- Store active diffs: { [filePath] = { original_bufnr, scratch_bufnr, original_win, scratch_win } }
 local active_diffs = {}
 
 local function create_scratch_buffer(filePath, newContent)
@@ -61,6 +60,16 @@ local function setup_diff_keymaps(scratch_buf, filePath)
   end, vim.tbl_extend("force", opts, { desc = "Gemini: Reject diff" }))
 end
 
+local function cleanup_diff_entry(diff, filePath)
+  -- Close windows
+  if vim.api.nvim_win_is_valid(diff.scratch_win) then
+    vim.api.nvim_win_close(diff.scratch_win, true)
+  end
+
+  -- Clean up
+  active_diffs[filePath] = nil
+end
+
 local function get_scratch_content(bufnr)
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
   return table.concat(lines, "\n")
@@ -96,13 +105,7 @@ function _G.GeminiCloseDiff(filePath)
 
   local content = get_scratch_content(diff.scratch_bufnr)
 
-  -- Close windows
-  if vim.api.nvim_win_is_valid(diff.scratch_win) then
-    vim.api.nvim_win_close(diff.scratch_win, true)
-  end
-
-  -- Clean up
-  active_diffs[filePath] = nil
+  cleanup_diff_entry(diff, filePath)
 
   return content
 end
@@ -156,6 +159,9 @@ function M.close_diff(filePath)
   end
 
   active_diffs[filePath] = nil
+
+  -- Reload original file
+  vim.cmd("edit " .. vim.fn.fnameescape(filePath))
 end
 
 function M.setup()

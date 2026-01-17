@@ -26,6 +26,7 @@ export const IDE_DEFINITIONS = {
   rustrover: { name: 'rustrover', displayName: 'RustRover' },
   datagrip: { name: 'datagrip', displayName: 'DataGrip' },
   phpstorm: { name: 'phpstorm', displayName: 'PhpStorm' },
+  nvim: { name: 'nvim', displayName: 'Neovim' },
 } as const;
 
 export interface IdeInfo {
@@ -73,6 +74,9 @@ export function detectIdeFromEnv(): IdeInfo {
   }
   if (isJetBrains()) {
     return IDE_DEFINITIONS.jetbrains;
+  }
+  if (process.env['NVIM']) {
+    return IDE_DEFINITIONS.nvim;
   }
   return IDE_DEFINITIONS.vscode;
 }
@@ -143,11 +147,12 @@ export function detectIde(
     };
   }
 
-  // Only VS Code, Sublime Text and JetBrains integrations are currently supported.
+  // Only VS Code, Sublime Text, JetBrains, and Neovim integrations are currently supported.
   if (
     process.env['TERM_PROGRAM'] !== 'vscode' &&
     process.env['TERM_PROGRAM'] !== 'sublime' &&
-    !isJetBrains()
+    !isJetBrains() &&
+    !process.env['NVIM']
   ) {
     return undefined;
   }

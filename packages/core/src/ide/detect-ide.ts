@@ -16,6 +16,7 @@ export const IDE_DEFINITIONS = {
   vscodefork: { name: 'vscodefork', displayName: 'IDE' },
   antigravity: { name: 'antigravity', displayName: 'Antigravity' },
   sublimetext: { name: 'sublimetext', displayName: 'Sublime Text' },
+  nvim: { name: 'nvim', displayName: 'Neovim' },
 } as const;
 
 export interface IdeInfo {
@@ -55,6 +56,9 @@ export function detectIdeFromEnv(): IdeInfo {
   if (process.env['TERM_PROGRAM'] === 'sublime') {
     return IDE_DEFINITIONS.sublimetext;
   }
+  if (process.env['NVIM']) {
+    return IDE_DEFINITIONS.nvim;
+  }
   return IDE_DEFINITIONS.vscode;
 }
 
@@ -91,10 +95,11 @@ export function detectIde(
     };
   }
 
-  // Only VS Code and Sublime Text integrations are currently supported.
+  // Only VS Code, Sublime Text, and Neovim integrations are currently supported.
   if (
     process.env['TERM_PROGRAM'] !== 'vscode' &&
-    process.env['TERM_PROGRAM'] !== 'sublime'
+    process.env['TERM_PROGRAM'] !== 'sublime' &&
+    !process.env['NVIM']
   ) {
     return undefined;
   }

@@ -101,6 +101,7 @@ import { useIdeTrustListener } from './hooks/useIdeTrustListener.js';
 import { type IdeIntegrationNudgeResult } from './IdeIntegrationNudge.js';
 import { appEvents, AppEvent } from '../utils/events.js';
 import { type UpdateObject } from './utils/updateCheck.js';
+import { profiler } from './components/DebugProfiler.js';
 import { setUpdateHandler } from '../utils/handleAutoUpdate.js';
 import { registerCleanup, runExitCleanup } from '../utils/cleanup.js';
 import { RELAUNCH_EXIT_CODE } from '../utils/processUtils.js';
@@ -1231,7 +1232,12 @@ Logging in with Google... Restarting Gemini CLI to continue.
   }, [terminalWidth, refreshStatic]);
 
   useEffect(() => {
-    const unsubscribe = ideContextStore.subscribe(setIdeContextState);
+    const unsubscribe = ideContextStore.subscribe((context) => {
+      // Mark IDE context updates as user actions to prevent false positive
+      // "idle frame" warnings from the profiler when working in an IDE
+      profiler.reportAction();
+      setIdeContextState(context);
+    });
     setIdeContextState(ideContextStore.get());
     return unsubscribe;
   }, []);

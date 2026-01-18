@@ -126,6 +126,9 @@ function M.accept_diff(filePath)
 
   -- Close diff
   M.close_diff(filePath)
+
+  -- Reload original file
+  vim.cmd("edit " .. vim.fn.fnameescape(filePath))
 end
 
 function M.reject_diff(filePath)

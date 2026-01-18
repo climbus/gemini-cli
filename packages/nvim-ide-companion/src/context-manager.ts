@@ -126,7 +126,7 @@ export class ContextManager {
     }
     this.debounceTimer = setTimeout(() => {
       this.listeners.forEach((cb) => cb());
-    }, 150); // 150ms - longer than VS Code to handle events spread over time (e.g. closing diffs)
+    }, 50);
   }
 
   get state(): IdeContext {

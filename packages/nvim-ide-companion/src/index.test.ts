@@ -18,9 +18,9 @@ vi.mock('neovim', () => ({
 
 vi.mock('./ide-server.js', () => ({
   IDEServer: vi.fn(() => ({
-      start: vi.fn(),
-      stop: vi.fn(),
-    })),
+    start: vi.fn(),
+    stop: vi.fn(),
+  })),
 }));
 
 vi.mock('./context-manager.js', () => ({

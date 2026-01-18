@@ -17,8 +17,6 @@ export class ContextManager {
   private openFiles: File[] = [];
   private listeners: Array<() => void> = [];
   private debounceTimer: NodeJS.Timeout | undefined;
-  private lastFireTime = 0;
-  private readonly THROTTLE_MS = 250;
 
   constructor(private nvim: NeovimClient) {
     this.setupSubscriptions();
@@ -80,7 +78,7 @@ export class ContextManager {
       this.openFiles.pop();
     }
 
-    this.fireWithThrottle();
+    this.fireWithDebounce();
   }
 
   private handleCursorMoved(data: { line: number; col: number }) {
@@ -92,7 +90,7 @@ export class ContextManager {
         line, // Already 1-based from Neovim
         character: col, // Already 1-based from Lua
       };
-      this.fireWithThrottle();
+      this.fireWithDebounce();
     }
   }
 
@@ -109,7 +107,7 @@ export class ContextManager {
       } else {
         activeFile.selectedText = selectedText || undefined;
       }
-      this.fireWithThrottle();
+      this.fireWithDebounce();
     }
   }
 
@@ -118,36 +116,17 @@ export class ContextManager {
     const index = this.openFiles.findIndex((f) => f.path === path);
     if (index !== -1) {
       this.openFiles.splice(index, 1);
-      this.fireWithThrottle();
+      this.fireWithDebounce();
     }
   }
 
-  private fireWithThrottle() {
-    const now = Date.now();
-    const timeSinceLastFire = now - this.lastFireTime;
-
-    // If enough time has passed, fire immediately
-    if (timeSinceLastFire >= this.THROTTLE_MS) {
-      this.lastFireTime = now;
+  private fireWithDebounce() {
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+    }
+    this.debounceTimer = setTimeout(() => {
       this.listeners.forEach((cb) => cb());
-
-      // Clear any pending timer since we just fired
-      if (this.debounceTimer) {
-        clearTimeout(this.debounceTimer);
-        this.debounceTimer = undefined;
-      }
-      return;
-    }
-
-    // Schedule a delayed fire if we haven't already
-    if (!this.debounceTimer) {
-      const delay = this.THROTTLE_MS - timeSinceLastFire;
-      this.debounceTimer = setTimeout(() => {
-        this.debounceTimer = undefined;
-        this.lastFireTime = Date.now();
-        this.listeners.forEach((cb) => cb());
-      }, delay);
-    }
+    }, 50); // 50ms - same as VS Code
   }
 
   get state(): IdeContext {

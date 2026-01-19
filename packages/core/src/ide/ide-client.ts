@@ -728,14 +728,14 @@ export class IdeClient {
       const errorMessage = _error instanceof Error ? _error.message : `_error`;
       this.setState(
         IDEConnectionStatus.Disconnected,
-        `IDE connection error.The connection was lost unexpectedly.Please try reconnecting by running / ide enable\n${errorMessage} `,
+        `IDE connection error. The connection was lost unexpectedly.Please try reconnecting by running / ide enable\n${errorMessage} `,
         true,
       );
     };
     this.client.onclose = () => {
       this.setState(
         IDEConnectionStatus.Disconnected,
-        `IDE connection closed.To reconnect, run / ide enable.`,
+        `IDE connection closed. To reconnect, run /ide enable.`,
         true,
       );
     };

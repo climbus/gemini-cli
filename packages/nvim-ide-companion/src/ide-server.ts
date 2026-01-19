@@ -87,6 +87,10 @@ async function writePortAndWorkspace({
     port,
     workspacePath,
     authToken,
+    ideInfo: {
+      name: 'nvim',
+      displayName: 'Neovim',
+    },
   });
 
   log(`Writing port file to: ${portFile}`);

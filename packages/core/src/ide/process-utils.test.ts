@@ -179,4 +179,105 @@ describe('getIdeProcessInfo', () => {
       expect(result).toEqual({ pid: 900, command: 'parent.exe' });
     });
   });
+
+  describe('Neovim socket-based PID extraction', () => {
+    afterEach(() => {
+      delete process.env['NVIM'];
+    });
+
+    it('should extract PID from $NVIM socket path', async () => {
+      (os.platform as Mock).mockReturnValue('linux');
+      process.env['NVIM'] = '/run/user/1000/nvim.12345.0';
+
+      const result = await getIdeProcessInfo();
+
+      expect(result).toEqual({ pid: 12345, command: 'nvim' });
+      expect(mockedExec).not.toHaveBeenCalled();
+    });
+
+    it('should handle different socket path formats', async () => {
+      // Test Unix XDG_RUNTIME_DIR format
+      (os.platform as Mock).mockReturnValue('linux');
+      process.env['NVIM'] = '/run/user/1000/nvim.9876.1';
+      let result = await getIdeProcessInfo();
+      expect(result.pid).toBe(9876);
+      expect(result.command).toBe('nvim');
+      delete process.env['NVIM'];
+
+      // Test Unix tmp format
+      process.env['NVIM'] = '/tmp/nvim.user/xxx/nvim.54321.0';
+      result = await getIdeProcessInfo();
+      expect(result.pid).toBe(54321);
+      expect(result.command).toBe('nvim');
+      delete process.env['NVIM'];
+
+      // Test Windows named pipe format
+      (os.platform as Mock).mockReturnValue('win32');
+      process.env['NVIM'] = '\\\\.\\pipe\\nvim.12345.0';
+      result = await getIdeProcessInfo();
+      expect(result.pid).toBe(12345);
+      expect(result.command).toBe('nvim');
+      delete process.env['NVIM'];
+    });
+
+    it('should fall back to process tree traversal if socket has no PID', async () => {
+      (os.platform as Mock).mockReturnValue('linux');
+      process.env['NVIM'] = '/tmp/invalid-socket-format';
+
+      mockedExec
+        .mockResolvedValueOnce({ stdout: '800 /bin/bash' })
+        .mockResolvedValueOnce({ stdout: '700 /usr/lib/nvim' })
+        .mockResolvedValueOnce({ stdout: '700 /usr/lib/nvim' });
+
+      await getIdeProcessInfo();
+
+      expect(mockedExec).toHaveBeenCalled();
+    });
+
+    it('should fall back if $NVIM not set', async () => {
+      (os.platform as Mock).mockReturnValue('linux');
+      delete process.env['NVIM'];
+
+      mockedExec
+        .mockResolvedValueOnce({ stdout: '800 /bin/bash' })
+        .mockResolvedValueOnce({ stdout: '700 /usr/lib/nvim' })
+        .mockResolvedValueOnce({ stdout: '700 /usr/lib/nvim' });
+
+      await getIdeProcessInfo();
+
+      expect(mockedExec).toHaveBeenCalled();
+    });
+
+    it('should handle socket paths with multiple dots', async () => {
+      (os.platform as Mock).mockReturnValue('linux');
+      process.env['NVIM'] = '/tmp/nvim.user.name/nvim.99999.5';
+
+      const result = await getIdeProcessInfo();
+
+      expect(result.pid).toBe(99999);
+      expect(result.command).toBe('nvim');
+      expect(mockedExec).not.toHaveBeenCalled();
+    });
+
+    it('should reject invalid PID values', async () => {
+      (os.platform as Mock).mockReturnValue('linux');
+
+      // Test negative PID
+      process.env['NVIM'] = '/run/user/1000/nvim.-123.0';
+      mockedExec.mockResolvedValueOnce({ stdout: '800 /bin/bash' });
+      mockedExec.mockResolvedValueOnce({ stdout: '700 /usr/lib/nvim' });
+      mockedExec.mockResolvedValueOnce({ stdout: '700 /usr/lib/nvim' });
+      await getIdeProcessInfo();
+      expect(mockedExec).toHaveBeenCalled();
+      mockedExec.mockClear();
+
+      // Test zero PID
+      process.env['NVIM'] = '/run/user/1000/nvim.0.0';
+      mockedExec.mockResolvedValueOnce({ stdout: '800 /bin/bash' });
+      mockedExec.mockResolvedValueOnce({ stdout: '700 /usr/lib/nvim' });
+      mockedExec.mockResolvedValueOnce({ stdout: '700 /usr/lib/nvim' });
+      await getIdeProcessInfo();
+      expect(mockedExec).toHaveBeenCalled();
+    });
+  });
 });

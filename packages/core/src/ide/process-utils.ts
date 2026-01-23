@@ -28,6 +28,50 @@ interface RawProcessInfo {
 }
 
 /**
+ * Extracts the PID from Neovim's socket path.
+ * Unix socket format: <directory>/<name>.<PID>.<COUNTER>
+ * Windows pipe format: \\.\pipe\<name>.<PID>.<COUNTER>
+ *
+ * Examples:
+ *   Unix: /run/user/1000/nvim.12345.0 -> 12345
+ *   Windows: \\.\pipe\nvim.12345.0 -> 12345
+ */
+function extractPidFromNvimSocket(socketPath: string): number | undefined {
+  // Extract basename (works for both Unix paths and Windows pipes)
+  const basename = path.basename(socketPath);
+  // Match format: name.PID.counter (same pattern on Unix and Windows)
+  const match = basename.match(/\.(\d+)\.\d+$/);
+  if (match) {
+    const pid = parseInt(match[1], 10);
+    if (!isNaN(pid) && pid > 0) {
+      return pid;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Attempts to get IDE process info from environment variables.
+ * Most reliable method for Neovim which sets $NVIM automatically.
+ */
+function getIdeProcessInfoFromEnv():
+  | {
+      pid: number;
+      command: string;
+    }
+  | undefined {
+  // Neovim automatically sets $NVIM to socket path in terminal buffers
+  const nvimSocket = process.env['NVIM'];
+  if (nvimSocket) {
+    const pid = extractPidFromNvimSocket(nvimSocket);
+    if (pid) {
+      return { pid, command: 'nvim' };
+    }
+  }
+  return undefined;
+}
+
+/**
  * Fetches the entire process table on Windows.
  */
 async function getProcessTableWindows(): Promise<Map<number, ProcessInfo>> {
@@ -216,6 +260,13 @@ export async function getIdeProcessInfo(): Promise<{
   pid: number;
   command: string;
 }> {
+  // First, try environment variables (most reliable)
+  const envInfo = getIdeProcessInfoFromEnv();
+  if (envInfo) {
+    return envInfo;
+  }
+
+  // Fall back to process tree traversal
   const platform = os.platform();
 
   if (platform === 'win32') {

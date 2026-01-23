@@ -70,16 +70,19 @@ directly in your editor.
 
 4. **Configure your shell** to source environment variables: Add to your
    `~/.bashrc` or `~/.zshrc`:
+
    ```bash
    # Source Gemini CLI IDE environment if available
    if [ -n "$NVIM" ]; then
-     NVIM_PID=$(pgrep -P $PPID nvim | head -n 1)
+     # Extract PID from $NVIM socket path (format: /path/to/nvim.PID.N)
+     NVIM_PID=$(basename "$NVIM" | sed -n 's/.*\.\([0-9]\+\)\.[0-9]\+$/\1/p')
+
+     # Fallback: try to discover via pgrep if extraction failed
+     if [ -z "$NVIM_PID" ]; then
+       NVIM_PID=$(pgrep -P $PPID nvim 2>/dev/null | head -n 1)
+     fi
+
      if [ -n "$NVIM_PID" ]; then
-       ENV_SCRIPT="$HOME/.local/share/nvim/site/pack/*/start/gemini-nvim/env-${NVIM_PID}.sh"
-       if [ -f "$ENV_SCRIPT" ]; then
-         source "$ENV_SCRIPT"
-       fi
-       # Also check tmp directory
        ENV_SCRIPT="/tmp/gemini/ide/nvim-env-${NVIM_PID}.sh"
        if [ -f "$ENV_SCRIPT" ]; then
          source "$ENV_SCRIPT"

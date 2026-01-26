@@ -4,6 +4,20 @@ local M = {}
 
 local active_diffs = {}
 
+local function get_channel()
+  local server = require('gemini.server')
+  return server.get_channel_id()
+end
+
+local function safe_notify(channel, event, data)
+  if not channel then
+    return false
+  end
+
+  local ok = pcall(vim.rpcnotify, channel, event, data)
+  return ok
+end
+
 local function create_scratch_buffer(filePath, newContent)
   local scratch_buf = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_set_option_value("buftype", "nofile", { buf = scratch_buf })
@@ -118,11 +132,14 @@ function M.accept_diff(filePath)
 
   local content = get_scratch_content(diff.scratch_bufnr)
 
-  -- Notify TypeScript server
-  vim.rpcnotify(0, "gemini:diff_accepted", {
-    filePath = filePath,
-    content = content,
-  })
+  local channel = get_channel()
+  if channel then
+    -- Notify TypeScript server
+    safe_notify(channel, "gemini:diff_accepted", {
+      filePath = filePath,
+      content = content,
+    })
+  end
 
   -- Close diff
   M.close_diff(filePath)
@@ -132,10 +149,13 @@ function M.accept_diff(filePath)
 end
 
 function M.reject_diff(filePath)
-  -- Notify TypeScript server
-  vim.rpcnotify(0, "gemini:diff_rejected", {
-    filePath = filePath,
-  })
+  local channel = get_channel()
+  if channel then
+    -- Notify TypeScript server
+    safe_notify(channel, "gemini:diff_rejected", {
+      filePath = filePath,
+    })
+  end
 
   -- Close diff
   M.close_diff(filePath)

@@ -85,4 +85,8 @@ function M.status()
   end
 end
 
+function M.get_channel_id()
+  return M.job_id
+end
+
 return M

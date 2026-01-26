@@ -2,7 +2,24 @@
 
 local M = {}
 
+local function get_channel()
+  local server = require('gemini.server')
+  return server.get_channel_id()
+end
+
+local function safe_notify(channel, event, data)
+  if not channel then
+    return false
+  end
+
+  local ok = pcall(vim.rpcnotify, channel, event, data)
+  return ok
+end
+
 local function notify_buffer_enter()
+  local channel = get_channel()
+  if not channel then return end
+
   local bufnr = vim.api.nvim_get_current_buf()
   local path = vim.api.nvim_buf_get_name(bufnr)
 
@@ -11,13 +28,16 @@ local function notify_buffer_enter()
     return
   end
 
-  vim.rpcnotify(0, 'gemini:buffer_enter', {
+  safe_notify(channel, 'gemini:buffer_enter', {
     path = path,
     bufnr = bufnr,
   })
 end
 
 local function notify_cursor_moved()
+  local channel = get_channel()
+  if not channel then return end
+
   local bufnr = vim.api.nvim_get_current_buf()
   local path = vim.api.nvim_buf_get_name(bufnr)
 
@@ -26,13 +46,16 @@ local function notify_cursor_moved()
   end
 
   local pos = vim.api.nvim_win_get_cursor(0)
-  vim.rpcnotify(0, 'gemini:cursor_moved', {
+  safe_notify(channel, 'gemini:cursor_moved', {
     line = pos[1],       -- Already 1-based
     col = pos[2] + 1,    -- Convert from 0-based to 1-based
   })
 end
 
 local function notify_visual_changed()
+  local channel = get_channel()
+  if not channel then return end
+
   local mode = vim.fn.mode()
   if mode ~= 'v' and mode ~= 'V' and mode ~= '\22' then  -- \22 is <C-V>
     return
@@ -48,19 +71,22 @@ local function notify_visual_changed()
   local lines = vim.api.nvim_buf_get_lines(0, start_line - 1, end_line, false)
   local selectedText = table.concat(lines, '\n')
 
-  vim.rpcnotify(0, 'gemini:visual_changed', {
+  safe_notify(channel, 'gemini:visual_changed', {
     selectedText = selectedText,
   })
 end
 
 local function notify_buffer_closed(bufnr)
+  local channel = get_channel()
+  if not channel then return end
+
   local path = vim.api.nvim_buf_get_name(bufnr)
 
   if path == '' or not vim.startswith(path, '/') then
     return
   end
 
-  vim.rpcnotify(0, 'gemini:buffer_closed', {
+  safe_notify(channel, 'gemini:buffer_closed', {
     path = path,
   })
 end
@@ -71,12 +97,15 @@ function M.setup()
   -- Notify about currently open buffers after a short delay
   -- This ensures the Node.js server has time to start and subscribe
   vim.defer_fn(function()
+    local channel = get_channel()
+    if not channel then return end
+
     local current_bufs = vim.api.nvim_list_bufs()
     for _, bufnr in ipairs(current_bufs) do
       if vim.api.nvim_buf_is_loaded(bufnr) then
         local path = vim.api.nvim_buf_get_name(bufnr)
         if path ~= '' and vim.startswith(path, '/') then
-          vim.rpcnotify(0, 'gemini:buffer_enter', {
+          safe_notify(channel, 'gemini:buffer_enter', {
             path = path,
             bufnr = bufnr,
           })
